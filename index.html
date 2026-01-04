@@ -136,7 +136,7 @@
             goldMine: { name: 'Tambang Emas', color: 0xffd700, size: 2, icon: '⛏️', cost: 250, costType: 'gold', income: { gold: 15 } },
             elixirCollector: { name: 'Pompa Elixir', color: 0x9932cc, size: 2, icon: '🏺', cost: 250, costType: 'elixir', income: { elixir: 15 } },
             barracks: { name: 'Barak', color: 0xff4500, size: 2, icon: '⚔️', cost: 500, costType: 'gold', income: {} },
-            wall: { name: 'Tembok', color: 0x808080, size: 1, icon: '🧱', cost: 50, costType: 'gold', income: {} }
+            wall: { name: 'Tembok', color: 0xaaaaaa, size: 1, icon: '🧱', cost: 50, costType: 'gold', income: {} }
         };
 
         window.onload = function() {
@@ -218,26 +218,158 @@
         function createBuilding(typeKey, gridX, gridY, level = 1) {
             const type = BUILDING_TYPES[typeKey];
             const group = new THREE.Group();
+            const pSize = type.size * GRID_SIZE;
 
-            // Mesh Utama (Bangunan)
-            const boxGeo = new THREE.BoxGeometry(type.size * GRID_SIZE - 0.2, (type.size * 0.8) * GRID_SIZE, type.size * GRID_SIZE - 0.2);
-            const boxMat = new THREE.MeshPhongMaterial({ color: type.color });
-            const mesh = new THREE.Mesh(boxGeo, boxMat);
-            mesh.position.y = (type.size * 0.4) * GRID_SIZE;
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-            group.add(mesh);
+            // Logika Visual Berdasarkan Nama/Tipe
+            switch(typeKey) {
+                case 'townHall':
+                    // Basis Stone
+                    const thBase = new THREE.Mesh(
+                        new THREE.BoxGeometry(pSize - 0.4, pSize * 0.4, pSize - 0.4),
+                        new THREE.MeshPhongMaterial({ color: 0x777777 })
+                    );
+                    thBase.position.y = pSize * 0.2;
+                    group.add(thBase);
 
-            // Atap (Sederhana)
-            const roofGeo = new THREE.BoxGeometry(type.size * GRID_SIZE + 0.1, 0.5, type.size * GRID_SIZE + 0.1);
-            const roofMat = new THREE.MeshPhongMaterial({ color: 0x444444 });
-            const roof = new THREE.Mesh(roofGeo, roofMat);
-            roof.position.y = (type.size * 0.8) * GRID_SIZE + 0.25;
-            group.add(roof);
+                    // Bagian Atas Stone
+                    const thTop = new THREE.Mesh(
+                        new THREE.BoxGeometry(pSize * 0.7, pSize * 0.3, pSize * 0.7),
+                        new THREE.MeshPhongMaterial({ color: 0x999999 })
+                    );
+                    thTop.position.y = pSize * 0.55;
+                    group.add(thTop);
+
+                    // Atap Kerucut
+                    const roof = new THREE.Mesh(
+                        new THREE.ConeGeometry(pSize * 0.5, pSize * 0.4, 4),
+                        new THREE.MeshPhongMaterial({ color: 0x8b0000 })
+                    );
+                    roof.rotation.y = Math.PI / 4;
+                    roof.position.y = pSize * 0.9;
+                    group.add(roof);
+                    break;
+
+                case 'goldMine':
+                    // Rangka Kayu
+                    const frame = new THREE.Mesh(
+                        new THREE.BoxGeometry(pSize - 0.4, 0.5, pSize - 0.4),
+                        new THREE.MeshPhongMaterial({ color: 0x5d4037 })
+                    );
+                    frame.position.y = 0.25;
+                    group.add(frame);
+
+                    // Lubang Tambang
+                    const pit = new THREE.Mesh(
+                        new THREE.BoxGeometry(pSize * 0.6, 0.1, pSize * 0.6),
+                        new THREE.MeshPhongMaterial({ color: 0x111111 })
+                    );
+                    pit.position.y = 0.55;
+                    group.add(pit);
+
+                    // Tiang Derek
+                    const pole = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.3, pSize * 0.8, 0.3),
+                        new THREE.MeshPhongMaterial({ color: 0x5d4037 })
+                    );
+                    pole.position.set(-pSize * 0.2, pSize * 0.4, 0);
+                    group.add(pole);
+
+                    // Tumpukan Emas
+                    const nugget = new THREE.Mesh(
+                        new THREE.IcosahedronGeometry(0.4, 0),
+                        new THREE.MeshPhongMaterial({ color: 0xffd700, emissive: 0xaa8800 })
+                    );
+                    nugget.position.set(pSize * 0.1, 0.8, pSize * 0.1);
+                    group.add(nugget);
+                    break;
+
+                case 'elixirCollector':
+                    // Basis Logam
+                    const eBase = new THREE.Mesh(
+                        new THREE.CylinderGeometry(pSize * 0.4, pSize * 0.45, 0.6, 16),
+                        new THREE.MeshPhongMaterial({ color: 0x555555 })
+                    );
+                    eBase.position.y = 0.3;
+                    group.add(eBase);
+
+                    // Tangki Kaca (Elixir)
+                    const tank = new THREE.Mesh(
+                        new THREE.CylinderGeometry(pSize * 0.35, pSize * 0.35, pSize * 0.7, 16),
+                        new THREE.MeshPhongMaterial({ 
+                            color: 0x9932cc, 
+                            transparent: true, 
+                            opacity: 0.7,
+                            emissive: 0x440044
+                        })
+                    );
+                    tank.position.y = pSize * 0.4 + 0.3;
+                    group.add(tank);
+
+                    // Tutup Atas
+                    const cap = new THREE.Mesh(
+                        new THREE.CylinderGeometry(pSize * 0.36, pSize * 0.36, 0.2, 16),
+                        new THREE.MeshPhongMaterial({ color: 0x444444 })
+                    );
+                    cap.position.y = pSize * 0.75 + 0.3;
+                    group.add(cap);
+                    break;
+
+                case 'barracks':
+                    // Gedung Utama (Merah)
+                    const bBody = new THREE.Mesh(
+                        new THREE.BoxGeometry(pSize - 0.4, pSize * 0.5, pSize - 0.4),
+                        new THREE.MeshPhongMaterial({ color: 0xaa2222 })
+                    );
+                    bBody.position.y = pSize * 0.25;
+                    group.add(bBody);
+
+                    // Atap Tenda
+                    const bRoof = new THREE.Mesh(
+                        new THREE.BoxGeometry(pSize - 0.2, 0.3, pSize - 0.2),
+                        new THREE.MeshPhongMaterial({ color: 0x444444 })
+                    );
+                    bRoof.position.y = pSize * 0.5 + 0.15;
+                    group.add(bRoof);
+
+                    // Pedang / Target di depan
+                    const sign = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.1, 0.8, 0.1),
+                        new THREE.MeshPhongMaterial({ color: 0xcccccc })
+                    );
+                    sign.position.set(pSize * 0.3, 0.4, pSize * 0.3);
+                    group.add(sign);
+                    break;
+
+                case 'wall':
+                    // Tembok Batu
+                    const wall = new THREE.Mesh(
+                        new THREE.BoxGeometry(pSize - 0.2, pSize * 0.8, pSize - 0.2),
+                        new THREE.MeshPhongMaterial({ color: 0x888888 })
+                    );
+                    wall.position.y = pSize * 0.4;
+                    group.add(wall);
+
+                    // Gerigi (Battlements)
+                    const tooth = new THREE.Mesh(
+                        new THREE.BoxGeometry(pSize * 0.4, 0.3, pSize * 0.4),
+                        new THREE.MeshPhongMaterial({ color: 0x666666 })
+                    );
+                    tooth.position.y = pSize * 0.8 + 0.15;
+                    group.add(tooth);
+                    break;
+            }
+
+            // Bayangan untuk semua bagian grup
+            group.traverse(child => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
 
             // Posisi di Grid
-            const worldX = (gridX * GRID_SIZE) - (WORLD_SIZE * GRID_SIZE / 2) + (type.size * GRID_SIZE / 2);
-            const worldZ = (gridY * GRID_SIZE) - (WORLD_SIZE * GRID_SIZE / 2) + (type.size * GRID_SIZE / 2);
+            const worldX = (gridX * GRID_SIZE) - (WORLD_SIZE * GRID_SIZE / 2) + (pSize / 2);
+            const worldZ = (gridY * GRID_SIZE) - (WORLD_SIZE * GRID_SIZE / 2) + (pSize / 2);
             group.position.set(worldX, 0, worldZ);
 
             scene.add(group);
@@ -393,15 +525,26 @@
 
         function selectBuildingInstance(b) {
             selectedId = b.id;
+            // Highlight dengan emissive pada anak mesh pertama (biasanya bodi utama)
             buildings.forEach(item => {
-                item.mesh.children[0].material.emissive.setHex(item.id === selectedId ? 0x333333 : 0x000000);
+                item.mesh.children.forEach(child => {
+                    if(child.material && child.material.emissive) {
+                        child.material.emissive.setHex(item.id === selectedId ? 0x222222 : 0x000000);
+                    }
+                });
             });
             document.getElementById('selection-overlay').classList.remove('hidden');
         }
 
         function deselect() {
             selectedId = null;
-            buildings.forEach(item => item.mesh.children[0].material.emissive.setHex(0x000000));
+            buildings.forEach(item => {
+                item.mesh.children.forEach(child => {
+                    if(child.material && child.material.emissive) {
+                        child.material.emissive.setHex(0x000000);
+                    }
+                });
+            });
             document.getElementById('selection-overlay').classList.add('hidden');
         }
 
@@ -415,7 +558,7 @@
                 b.level++;
                 
                 // Update Visual (Sisik / Tinggi)
-                b.mesh.scale.y += 0.2;
+                b.mesh.scale.y += 0.1;
                 b.mesh.position.y += 0.1;
                 
                 if (b.type === 'townHall') {
