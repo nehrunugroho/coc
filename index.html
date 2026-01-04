@@ -3,15 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Empire Builder - COC Style</title>
+    <title>Empire Builder 3D - COC Style</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@400;700&display=swap');
-
-        :root {
-            --grass-color: #567d46;
-            --grid-color: rgba(255, 255, 255, 0.05);
-        }
 
         body {
             font-family: 'Inter', sans-serif;
@@ -25,16 +21,9 @@
             font-family: 'Bungee', cursive;
         }
 
-        #game-canvas {
-            background-color: var(--grass-color);
-            background-image: 
-                linear-gradient(var(--grid-color) 1px, transparent 1px),
-                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
-            cursor: grab;
-        }
-
-        #game-canvas:active {
-            cursor: grabbing;
+        #game-container {
+            width: 100vw;
+            height: 100vh;
         }
 
         .resource-bar {
@@ -50,151 +39,169 @@
             filter: brightness(1.1);
         }
 
-        /* Animasi koin melayang */
-        @keyframes float-up {
-            0% { transform: translateY(0); opacity: 1; }
-            100% { transform: translateY(-50px); opacity: 0; }
+        /* Notifikasi */
+        .notif {
+            animation: slideIn 0.3s ease-out forwards;
         }
 
-        .floating-text {
-            position: absolute;
-            pointer-events: none;
-            animation: float-up 1s forwards;
-            font-weight: bold;
-            color: #ffd700;
-        }
-
-        /* Tooltip style */
-        .game-tooltip {
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,255,255,0.1);
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
     </style>
 </head>
 <body class="flex flex-col h-screen">
 
-    <!-- Top Navigation / Resources -->
+    <!-- HUD / Resources -->
     <div class="fixed top-0 left-0 right-0 p-4 flex justify-between items-start z-50 pointer-events-none">
         <div class="flex flex-col gap-2 pointer-events-auto">
-            <div class="resource-bar bg-black/50 border-2 border-yellow-500 rounded-full px-4 py-1 flex items-center gap-3">
-                <span class="text-xl">💰</span>
-                <span id="gold-display" class="font-bungee text-yellow-400 text-lg">1000</span>
+            <div class="resource-bar bg-black/60 backdrop-blur-md border-2 border-yellow-500 rounded-full px-5 py-2 flex items-center gap-3">
+                <span class="text-2xl">💰</span>
+                <span id="gold-display" class="font-bungee text-yellow-400 text-xl">1000</span>
             </div>
-            <div class="resource-bar bg-black/50 border-2 border-purple-500 rounded-full px-4 py-1 flex items-center gap-3">
-                <span class="text-xl">🧪</span>
-                <span id="elixir-display" class="font-bungee text-purple-400 text-lg">1000</span>
+            <div class="resource-bar bg-black/60 backdrop-blur-md border-2 border-purple-500 rounded-full px-5 py-2 flex items-center gap-3">
+                <span class="text-2xl">🧪</span>
+                <span id="elixir-display" class="font-bungee text-purple-400 text-xl">1000</span>
             </div>
         </div>
 
         <div class="pointer-events-auto flex flex-col items-end gap-2">
-            <div class="bg-black/50 border-2 border-white/30 rounded-lg px-4 py-2 text-white">
-                <div class="text-xs uppercase font-bold text-gray-400">Balai Kota</div>
-                <div id="th-level" class="font-bungee text-xl">LVL 1</div>
+            <div class="bg-black/60 backdrop-blur-md border-2 border-white/30 rounded-2xl px-5 py-3 text-white text-right">
+                <div class="text-xs uppercase font-bold text-gray-400 tracking-widest">Pusat Pemerintahan</div>
+                <div id="th-level" class="font-bungee text-2xl text-blue-400">LVL 1</div>
+            </div>
+            <div class="text-white/50 text-[10px] mt-2 bg-black/40 px-2 py-1 rounded">Klik & Seret untuk Putar Kamera</div>
+        </div>
+    </div>
+
+    <!-- 3D Viewport -->
+    <div id="game-container"></div>
+
+    <!-- Menu Konstruksi -->
+    <div class="fixed bottom-0 left-0 right-0 bg-black/70 backdrop-blur-xl border-t-2 border-white/10 p-4 z-50">
+        <div class="max-w-4xl mx-auto flex gap-4 overflow-x-auto pb-2 px-2">
+            <div onclick="selectBuilding('goldMine')" class="building-card shrink-0 w-36 bg-gradient-to-b from-gray-700 to-gray-800 border-b-4 border-yellow-600 rounded-2xl p-4 flex flex-col items-center cursor-pointer shadow-xl">
+                <span class="text-5xl mb-2">⛏️</span>
+                <div class="font-bungee text-[10px] text-white text-center">Tambang Emas</div>
+                <div class="text-sm text-yellow-400 mt-1 font-bold">💰 250</div>
+            </div>
+            <div onclick="selectBuilding('elixirCollector')" class="building-card shrink-0 w-36 bg-gradient-to-b from-gray-700 to-gray-800 border-b-4 border-purple-600 rounded-2xl p-4 flex flex-col items-center cursor-pointer shadow-xl">
+                <span class="text-5xl mb-2">🏺</span>
+                <div class="font-bungee text-[10px] text-white text-center">Pompa Elixir</div>
+                <div class="text-sm text-purple-400 mt-1 font-bold">🧪 250</div>
+            </div>
+            <div onclick="selectBuilding('barracks')" class="building-card shrink-0 w-36 bg-gradient-to-b from-gray-700 to-gray-800 border-b-4 border-red-600 rounded-2xl p-4 flex flex-col items-center cursor-pointer shadow-xl">
+                <span class="text-5xl mb-2">⚔️</span>
+                <div class="font-bungee text-[10px] text-white text-center">Barak</div>
+                <div class="text-sm text-yellow-400 mt-1 font-bold">💰 500</div>
+            </div>
+            <div onclick="selectBuilding('wall')" class="building-card shrink-0 w-36 bg-gradient-to-b from-gray-700 to-gray-800 border-b-4 border-gray-500 rounded-2xl p-4 flex flex-col items-center cursor-pointer shadow-xl">
+                <span class="text-5xl mb-2">🧱</span>
+                <div class="font-bungee text-[10px] text-white text-center">Benteng</div>
+                <div class="text-sm text-yellow-400 mt-1 font-bold">💰 50</div>
             </div>
         </div>
     </div>
 
-    <!-- Game World -->
-    <div id="canvas-container" class="flex-grow relative bg-[#2a2a2a] overflow-hidden">
-        <canvas id="game-canvas"></canvas>
+    <!-- Kontrol Seleksi -->
+    <div id="selection-overlay" class="fixed bottom-36 left-1/2 -translate-x-1/2 hidden flex gap-4 z-[60]">
+        <button onclick="upgradeSelected()" class="bg-blue-600 hover:bg-blue-500 text-white font-bungee px-8 py-3 rounded-2xl shadow-2xl border-b-4 border-blue-800 transition-all active:translate-y-1 active:border-b-0">UPGRADE</button>
+        <button onclick="destroySelected()" class="bg-red-600 hover:bg-red-500 text-white font-bungee px-8 py-3 rounded-2xl shadow-2xl border-b-4 border-red-800 transition-all active:translate-y-1 active:border-b-0">HAPUS</button>
     </div>
 
-    <!-- Shop / Build Menu -->
-    <div class="bg-[#242424] border-t-4 border-[#333] p-4 z-50">
-        <div class="max-w-4xl mx-auto flex gap-4 overflow-x-auto pb-2">
-            <!-- Building Options -->
-            <div onclick="selectBuilding('goldMine')" class="building-card shrink-0 w-32 bg-[#333] border-b-4 border-yellow-600 rounded-xl p-3 flex flex-col items-center cursor-pointer">
-                <span class="text-4xl mb-2">⛏️</span>
-                <div class="font-bungee text-xs text-white">Tambang Emas</div>
-                <div class="text-[10px] text-yellow-400 mt-1">💰 250</div>
-            </div>
-            <div onclick="selectBuilding('elixirCollector')" class="building-card shrink-0 w-32 bg-[#333] border-b-4 border-purple-600 rounded-xl p-3 flex flex-col items-center cursor-pointer">
-                <span class="text-4xl mb-2">🏺</span>
-                <div class="font-bungee text-xs text-white">Pengumpul Elixir</div>
-                <div class="text-[10px] text-purple-400 mt-1">🧪 250</div>
-            </div>
-            <div onclick="selectBuilding('barracks')" class="building-card shrink-0 w-32 bg-[#333] border-b-4 border-red-600 rounded-xl p-3 flex flex-col items-center cursor-pointer">
-                <span class="text-4xl mb-2">⚔️</span>
-                <div class="font-bungee text-xs text-white">Barak</div>
-                <div class="text-[10px] text-yellow-400 mt-1">💰 500</div>
-            </div>
-            <div onclick="selectBuilding('wall')" class="building-card shrink-0 w-32 bg-[#333] border-b-4 border-gray-500 rounded-xl p-3 flex flex-col items-center cursor-pointer">
-                <span class="text-4xl mb-2">🧱</span>
-                <div class="font-bungee text-xs text-white">Tembok</div>
-                <div class="text-[10px] text-yellow-400 mt-1">💰 50</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Interaction Overlay (Selected Building) -->
-    <div id="selection-overlay" class="fixed bottom-32 left-1/2 -translate-x-1/2 hidden flex gap-4 z-[60]">
-        <button onclick="upgradeSelected()" class="bg-blue-600 hover:bg-blue-500 text-white font-bungee px-6 py-2 rounded-lg shadow-xl border-b-4 border-blue-800 transition-all active:translate-y-1 active:border-b-0">UPGRADE</button>
-        <button onclick="destroySelected()" class="bg-red-600 hover:bg-red-500 text-white font-bungee px-6 py-2 rounded-lg shadow-xl border-b-4 border-red-800 transition-all active:translate-y-1 active:border-b-0">HAPUS</button>
-    </div>
-
-    <!-- Notification system -->
-    <div id="notif-container" class="fixed top-24 left-1/2 -translate-x-1/2 flex flex-col gap-2 z-[70] pointer-events-none"></div>
+    <!-- Notifikasi -->
+    <div id="notif-container" class="fixed top-32 left-1/2 -translate-x-1/2 flex flex-col gap-2 z-[70] pointer-events-none"></div>
 
     <script>
-        const canvas = document.getElementById('game-canvas');
-        const ctx = canvas.getContext('2d');
-        const container = document.getElementById('canvas-container');
+        // --- Inisialisasi Game & Three.js ---
+        let scene, camera, renderer, raycaster;
+        let ground, previewMesh;
+        const GRID_SIZE = 2; // Ukuran satu kotak grid dalam unit Three.js
+        const WORLD_SIZE = 20; // 20x20 grid
 
-        // Game Constants
-        const GRID_SIZE = 50;
-        const WORLD_SIZE = 40; // 40x40 cells
-        
-        // Game State
         let resources = { gold: 1000, elixir: 1000 };
         let buildings = [];
         let selectedId = null;
         let placementMode = null;
-        let camera = { x: 0, y: 0, zoom: 1 };
-        let isDragging = false;
-        let lastMouse = { x: 0, y: 0 };
 
-        // Building Templates
+        // Mouse & Kamera State
+        let mouse = new THREE.Vector2();
+        let isMouseDown = false;
+        let startRotation = { y: 0.7, x: -0.6 };
+        let currentRotation = { y: 0.7, x: -0.6 };
+        let startMouse = { x: 0, y: 0 };
+
         const BUILDING_TYPES = {
-            townHall: { name: 'Balai Kota', icon: '🏰', cost: 0, costType: 'gold', size: 3, income: { gold: 5, elixir: 5 } },
-            goldMine: { name: 'Tambang Emas', icon: '⛏️', cost: 250, costType: 'gold', size: 2, income: { gold: 15 } },
-            elixirCollector: { name: 'Pengumpul Elixir', icon: '🏺', cost: 250, costType: 'elixir', size: 2, income: { elixir: 15 } },
-            barracks: { name: 'Barak', icon: '⚔️', cost: 500, costType: 'gold', size: 2, income: {} },
-            wall: { name: 'Tembok', icon: '🧱', cost: 50, costType: 'gold', size: 1, income: {} }
+            townHall: { name: 'Balai Kota', color: 0x8b4513, size: 3, icon: '🏰', cost: 0, costType: 'gold', income: { gold: 5, elixir: 5 } },
+            goldMine: { name: 'Tambang Emas', color: 0xffd700, size: 2, icon: '⛏️', cost: 250, costType: 'gold', income: { gold: 15 } },
+            elixirCollector: { name: 'Pompa Elixir', color: 0x9932cc, size: 2, icon: '🏺', cost: 250, costType: 'elixir', income: { elixir: 15 } },
+            barracks: { name: 'Barak', color: 0xff4500, size: 2, icon: '⚔️', cost: 500, costType: 'gold', income: {} },
+            wall: { name: 'Tembok', color: 0x808080, size: 1, icon: '🧱', cost: 50, costType: 'gold', income: {} }
         };
 
-        // Initialize Canvas
-        function resize() {
-            canvas.width = container.clientWidth;
-            canvas.height = container.clientHeight;
-            // Center camera initially
-            camera.x = (canvas.width - WORLD_SIZE * GRID_SIZE) / 2;
-            camera.y = (canvas.height - WORLD_SIZE * GRID_SIZE) / 2;
+        window.onload = function() {
+            initScene();
+            initGame();
+            animate();
+        };
+
+        function initScene() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x334d2a); // Hijau Rumput Tua
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            updateCameraPosition();
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('game-container').appendChild(renderer.domElement);
+
+            raycaster = new THREE.Raycaster();
+
+            // Pencahayaan
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+            dirLight.position.set(50, 100, 50);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            scene.add(dirLight);
+
+            // Lantai / Grid
+            const groundGeo = new THREE.PlaneGeometry(WORLD_SIZE * GRID_SIZE, WORLD_SIZE * GRID_SIZE);
+            const groundMat = new THREE.MeshPhongMaterial({ color: 0x567d46 });
+            ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            const gridHelper = new THREE.GridHelper(WORLD_SIZE * GRID_SIZE, WORLD_SIZE, 0xffffff, 0x000000);
+            gridHelper.position.y = 0.05;
+            gridHelper.material.opacity = 0.1;
+            gridHelper.material.transparent = true;
+            scene.add(gridHelper);
+
+            // Preview Placement
+            const previewGeo = new THREE.BoxGeometry(1, 1, 1);
+            const previewMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.4 });
+            previewMesh = new THREE.Mesh(previewGeo, previewMat);
+            previewMesh.visible = false;
+            scene.add(previewMesh);
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('mousedown', onMouseDown);
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
         }
 
-        // --- Core Game Functions ---
-
-        function init() {
-            window.addEventListener('resize', resize);
-            resize();
-
-            // Initial Town Hall
-            buildings.push({
-                id: Date.now(),
-                type: 'townHall',
-                x: 18, y: 18,
-                level: 1,
-                lastCollect: Date.now()
-            });
-
-            requestAnimationFrame(gameLoop);
-            setInterval(passiveIncome, 1000); // Generate resources every second
-        }
-
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
+        function initGame() {
+            // Bangunan awal: Town Hall
+            createBuilding('townHall', 0, 0, 1);
+            setInterval(passiveIncome, 1000);
         }
 
         function passiveIncome() {
@@ -208,95 +215,155 @@
             updateUI();
         }
 
-        function update() {
-            // Smoothly move camera or handle logic
-        }
+        function createBuilding(typeKey, gridX, gridY, level = 1) {
+            const type = BUILDING_TYPES[typeKey];
+            const group = new THREE.Group();
 
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(camera.x, camera.y);
-            ctx.scale(camera.zoom, camera.zoom);
+            // Mesh Utama (Bangunan)
+            const boxGeo = new THREE.BoxGeometry(type.size * GRID_SIZE - 0.2, (type.size * 0.8) * GRID_SIZE, type.size * GRID_SIZE - 0.2);
+            const boxMat = new THREE.MeshPhongMaterial({ color: type.color });
+            const mesh = new THREE.Mesh(boxGeo, boxMat);
+            mesh.position.y = (type.size * 0.4) * GRID_SIZE;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            group.add(mesh);
 
-            // Draw Grid Boundaries
-            ctx.fillStyle = '#4a6d3a';
-            ctx.fillRect(0, 0, WORLD_SIZE * GRID_SIZE, WORLD_SIZE * GRID_SIZE);
+            // Atap (Sederhana)
+            const roofGeo = new THREE.BoxGeometry(type.size * GRID_SIZE + 0.1, 0.5, type.size * GRID_SIZE + 0.1);
+            const roofMat = new THREE.MeshPhongMaterial({ color: 0x444444 });
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.y = (type.size * 0.8) * GRID_SIZE + 0.25;
+            group.add(roof);
 
-            // Draw Grid Lines
-            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-            ctx.lineWidth = 1;
-            for(let i = 0; i <= WORLD_SIZE; i++) {
-                ctx.beginPath();
-                ctx.moveTo(i * GRID_SIZE, 0);
-                ctx.lineTo(i * GRID_SIZE, WORLD_SIZE * GRID_SIZE);
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(0, i * GRID_SIZE);
-                ctx.lineTo(WORLD_SIZE * GRID_SIZE, i * GRID_SIZE);
-                ctx.stroke();
-            }
+            // Posisi di Grid
+            const worldX = (gridX * GRID_SIZE) - (WORLD_SIZE * GRID_SIZE / 2) + (type.size * GRID_SIZE / 2);
+            const worldZ = (gridY * GRID_SIZE) - (WORLD_SIZE * GRID_SIZE / 2) + (type.size * GRID_SIZE / 2);
+            group.position.set(worldX, 0, worldZ);
 
-            // Draw Buildings
-            buildings.forEach(b => {
-                const type = BUILDING_TYPES[b.type];
-                const px = b.x * GRID_SIZE;
-                const py = b.y * GRID_SIZE;
-                const pSize = type.size * GRID_SIZE;
+            scene.add(group);
 
-                // Shadow
-                ctx.fillStyle = 'rgba(0,0,0,0.2)';
-                ctx.fillRect(px + 4, py + 4, pSize, pSize);
-
-                // Base
-                ctx.fillStyle = selectedId === b.id ? '#60a5fa' : '#8b6b4d';
-                ctx.fillRect(px, py, pSize, pSize);
-                ctx.strokeStyle = '#5d4037';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(px, py, pSize, pSize);
-
-                // Icon
-                ctx.font = `${pSize * 0.6}px Arial`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(type.icon, px + pSize/2, py + pSize/2);
-
-                // Level Tag
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 12px Inter';
-                ctx.fillText(`LVL ${b.level}`, px + pSize/2, py + pSize - 10);
-            });
-
-            // Draw Placement Preview
-            if (placementMode) {
-                const mouseGrid = getMouseGrid(lastMouse.x, lastMouse.y);
-                const type = BUILDING_TYPES[placementMode];
-                const isValid = canPlace(mouseGrid.x, mouseGrid.y, type.size);
-                
-                ctx.fillStyle = isValid ? 'rgba(0, 255, 0, 0.3)' : 'rgba(255, 0, 0, 0.3)';
-                ctx.fillRect(mouseGrid.x * GRID_SIZE, mouseGrid.y * GRID_SIZE, type.size * GRID_SIZE, type.size * GRID_SIZE);
-            }
-
-            ctx.restore();
-        }
-
-        // --- Interaction Logic ---
-
-        function getMouseGrid(mx, my) {
-            return {
-                x: Math.floor((mx - camera.x) / (GRID_SIZE * camera.zoom)),
-                y: Math.floor((my - camera.y) / (GRID_SIZE * camera.zoom))
+            const bData = {
+                id: Date.now() + Math.random(),
+                type: typeKey,
+                gridX, gridY,
+                level,
+                mesh: group
             };
+            buildings.push(bData);
+            return bData;
         }
 
-        function canPlace(x, y, size) {
-            // Check world bounds
-            if (x < 0 || y < 0 || x + size > WORLD_SIZE || y + size > WORLD_SIZE) return false;
+        function animate() {
+            requestAnimationFrame(animate);
             
-            // Check collisions with other buildings
+            if (placementMode) {
+                updatePlacementPreview();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // --- Kontrol & Interaksi ---
+
+        function onMouseDown(e) {
+            if (e.target.closest('button') || e.target.closest('.building-card')) return;
+            
+            isMouseDown = true;
+            startMouse.x = e.clientX;
+            startMouse.y = e.clientY;
+            startRotation.y = currentRotation.y;
+            startRotation.x = currentRotation.x;
+        }
+
+        function onMouseMove(e) {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+            if (isMouseDown) {
+                const deltaX = e.clientX - startMouse.x;
+                const deltaY = e.clientY - startMouse.y;
+                currentRotation.y = startRotation.y + deltaX * 0.005;
+                currentRotation.x = Math.max(-1.2, Math.min(-0.2, startRotation.x + deltaY * 0.005));
+                updateCameraPosition();
+            }
+        }
+
+        function onMouseUp(e) {
+            if (isMouseDown && Math.abs(e.clientX - startMouse.x) < 5) {
+                handleInteraction();
+            }
+            isMouseDown = false;
+        }
+
+        function updateCameraPosition() {
+            const distance = 45;
+            camera.position.x = distance * Math.sin(currentRotation.y) * Math.cos(currentRotation.x);
+            camera.position.z = distance * Math.cos(currentRotation.y) * Math.cos(currentRotation.x);
+            camera.position.y = -distance * Math.sin(currentRotation.x);
+            camera.lookAt(0, 0, 0);
+        }
+
+        function updatePlacementPreview() {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(ground);
+
+            if (intersects.length > 0) {
+                const pt = intersects[0].point;
+                const type = BUILDING_TYPES[placementMode];
+                
+                // Konversi koordinat dunia ke koordinat grid
+                let gx = Math.floor((pt.x + (WORLD_SIZE * GRID_SIZE / 2)) / GRID_SIZE);
+                let gy = Math.floor((pt.z + (WORLD_SIZE * GRID_SIZE / 2)) / GRID_SIZE);
+
+                // Snap ke grid
+                const worldX = (gx * GRID_SIZE) - (WORLD_SIZE * GRID_SIZE / 2) + (type.size * GRID_SIZE / 2);
+                const worldZ = (gy * GRID_SIZE) - (WORLD_SIZE * GRID_SIZE / 2) + (type.size * GRID_SIZE / 2);
+
+                previewMesh.scale.set(type.size * GRID_SIZE, 0.5, type.size * GRID_SIZE);
+                previewMesh.position.set(worldX, 0.25, worldZ);
+                previewMesh.visible = true;
+
+                const valid = canPlace(gx, gy, type.size);
+                previewMesh.material.color.setHex(valid ? 0x00ff00 : 0xff0000);
+            } else {
+                previewMesh.visible = false;
+            }
+        }
+
+        function handleInteraction() {
+            raycaster.setFromCamera(mouse, camera);
+            
+            if (placementMode) {
+                const intersects = raycaster.intersectObject(ground);
+                if (intersects.length > 0) {
+                    const pt = intersects[0].point;
+                    let gx = Math.floor((pt.x + (WORLD_SIZE * GRID_SIZE / 2)) / GRID_SIZE);
+                    let gy = Math.floor((pt.z + (WORLD_SIZE * GRID_SIZE / 2)) / GRID_SIZE);
+                    placeBuilding(gx, gy);
+                }
+            } else {
+                const intersects = raycaster.intersectObjects(buildings.map(b => b.mesh), true);
+                if (intersects.length > 0) {
+                    let clickedGroup = intersects[0].object;
+                    while (clickedGroup.parent && clickedGroup.parent.type !== "Scene") {
+                        clickedGroup = clickedGroup.parent;
+                    }
+                    const b = buildings.find(b => b.mesh === clickedGroup);
+                    if (b) selectBuildingInstance(b);
+                } else {
+                    deselect();
+                }
+            }
+        }
+
+        // --- Logika Game ---
+
+        function canPlace(gx, gy, size) {
+            if (gx < 0 || gy < 0 || gx + size > WORLD_SIZE || gy + size > WORLD_SIZE) return false;
             return !buildings.some(b => {
                 const bSize = BUILDING_TYPES[b.type].size;
-                return x < b.x + bSize && x + size > b.x &&
-                       y < b.y + bSize && y + size > b.y;
+                return gx < b.gridX + bSize && gx + size > b.gridX &&
+                       gy < b.gridY + bSize && gy + size > b.gridY;
             });
         }
 
@@ -306,101 +373,78 @@
                 return;
             }
             placementMode = type;
+            deselect();
+            showNotif(`Letakkan ${BUILDING_TYPES[type].name}`, "blue");
+        }
+
+        function placeBuilding(gx, gy) {
+            const type = BUILDING_TYPES[placementMode];
+            if (canPlace(gx, gy, type.size)) {
+                resources[type.costType] -= type.cost;
+                createBuilding(placementMode, gx, gy);
+                placementMode = null;
+                previewMesh.visible = false;
+                updateUI();
+                showNotif(`${type.name} Berhasil Dibangun`, "green");
+            } else {
+                showNotif("Area Terhalang!", "red");
+            }
+        }
+
+        function selectBuildingInstance(b) {
+            selectedId = b.id;
+            buildings.forEach(item => {
+                item.mesh.children[0].material.emissive.setHex(item.id === selectedId ? 0x333333 : 0x000000);
+            });
+            document.getElementById('selection-overlay').classList.remove('hidden');
+        }
+
+        function deselect() {
             selectedId = null;
+            buildings.forEach(item => item.mesh.children[0].material.emissive.setHex(0x000000));
             document.getElementById('selection-overlay').classList.add('hidden');
         }
-
-        canvas.addEventListener('mousedown', e => {
-            isDragging = true;
-            lastMouse = { x: e.clientX, y: e.clientY };
-        });
-
-        canvas.addEventListener('mousemove', e => {
-            if (isDragging) {
-                camera.x += (e.clientX - lastMouse.x);
-                camera.y += (e.clientY - lastMouse.y);
-            }
-            lastMouse = { x: e.clientX, y: e.clientY };
-        });
-
-        canvas.addEventListener('mouseup', e => {
-            if (!isDragging || Math.abs(e.clientX - lastMouse.x) < 5) {
-                const grid = getMouseGrid(e.clientX, e.clientY);
-                
-                if (placementMode) {
-                    placeBuilding(grid.x, grid.y);
-                } else {
-                    handleSelection(grid.x, grid.y);
-                }
-            }
-            isDragging = false;
-        });
-
-        function placeBuilding(x, y) {
-            const type = BUILDING_TYPES[placementMode];
-            if (canPlace(x, y, type.size)) {
-                resources[type.costType] -= type.cost;
-                buildings.push({
-                    id: Date.now(),
-                    type: placementMode,
-                    x, y, level: 1
-                });
-                showNotif(`${type.name} dibangun!`, "green");
-                placementMode = null;
-                updateUI();
-            } else {
-                showNotif("Tidak bisa membangun di sini!", "red");
-            }
-        }
-
-        function handleSelection(gx, gy) {
-            const hit = buildings.find(b => {
-                const size = BUILDING_TYPES[b.type].size;
-                return gx >= b.x && gx < b.x + size &&
-                       gy >= b.y && gy < b.y + size;
-            });
-
-            if (hit) {
-                selectedId = hit.id;
-                document.getElementById('selection-overlay').classList.remove('hidden');
-            } else {
-                selectedId = null;
-                document.getElementById('selection-overlay').classList.add('hidden');
-            }
-        }
-
-        // --- Action Functions ---
 
         function upgradeSelected() {
             const b = buildings.find(t => t.id === selectedId);
             if (!b) return;
 
-            const upgradeCost = b.level * 500;
-            if (resources.gold >= upgradeCost) {
-                resources.gold -= upgradeCost;
+            const cost = b.level * 500;
+            if (resources.gold >= cost) {
+                resources.gold -= cost;
                 b.level++;
+                
+                // Update Visual (Sisik / Tinggi)
+                b.mesh.scale.y += 0.2;
+                b.mesh.position.y += 0.1;
+                
                 if (b.type === 'townHall') {
                     document.getElementById('th-level').innerText = `LVL ${b.level}`;
                 }
                 showNotif("Upgrade Berhasil!", "blue");
                 updateUI();
             } else {
-                showNotif(`Butuh 💰 ${upgradeCost} untuk upgrade!`, "red");
+                showNotif(`Butuh 💰 ${cost} Emas`, "red");
             }
         }
 
         function destroySelected() {
-            buildings = buildings.filter(b => b.id !== selectedId || b.type === 'townHall');
-            if (selectedId && buildings.find(b => b.id === selectedId)?.type === 'townHall') {
-                showNotif("Balai Kota tidak bisa dihapus!", "orange");
+            const index = buildings.findIndex(b => b.id === selectedId);
+            if (index === -1) return;
+            
+            const b = buildings[index];
+            if (b.type === 'townHall') {
+                showNotif("Tidak bisa menghapus Pusat Pemerintahan!", "orange");
                 return;
             }
-            selectedId = null;
-            document.getElementById('selection-overlay').classList.add('hidden');
-            showNotif("Bangunan dihapus.", "gray");
+
+            scene.remove(b.mesh);
+            buildings.splice(index, 1);
+            deselect();
+            showNotif("Bangunan Dihancurkan", "gray");
         }
 
-        // --- UI Utils ---
+        // --- Utilitas UI ---
 
         function updateUI() {
             document.getElementById('gold-display').innerText = Math.floor(resources.gold);
@@ -409,32 +453,28 @@
 
         function showNotif(msg, color) {
             const div = document.createElement('div');
-            const colorClass = {
-                red: 'bg-red-600',
-                green: 'bg-green-600',
-                blue: 'bg-blue-600',
-                orange: 'bg-orange-600',
-                gray: 'bg-gray-600'
-            }[color] || 'bg-black';
-
-            div.className = `${colorClass} text-white font-bold px-6 py-2 rounded-full shadow-lg transition-all opacity-0 translate-y-2`;
+            const colors = {
+                red: 'bg-red-600', green: 'bg-green-600', 
+                blue: 'bg-blue-600', orange: 'bg-orange-600', gray: 'bg-gray-700'
+            };
+            div.className = `notif ${colors[color] || 'bg-black'} text-white font-bold px-8 py-3 rounded-2xl shadow-2xl`;
             div.innerText = msg;
             
             const container = document.getElementById('notif-container');
             container.appendChild(div);
 
             setTimeout(() => {
-                div.classList.remove('opacity-0', 'translate-y-2');
-            }, 10);
-
-            setTimeout(() => {
-                div.classList.add('opacity-0', '-translate-y-2');
+                div.style.opacity = '0';
+                div.style.transform = 'translateY(-20px)';
                 setTimeout(() => div.remove(), 500);
             }, 3000);
         }
 
-        // --- Start Game ---
-        window.onload = init;
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
 
     </script>
 </body>
