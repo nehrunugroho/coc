@@ -39,7 +39,6 @@
             filter: brightness(1.1);
         }
 
-        /* Notifikasi */
         .notif {
             animation: slideIn 0.3s ease-out forwards;
         }
@@ -113,18 +112,16 @@
     <div id="notif-container" class="fixed top-32 left-1/2 -translate-x-1/2 flex flex-col gap-2 z-[70] pointer-events-none"></div>
 
     <script>
-        // --- Inisialisasi Game & Three.js ---
         let scene, camera, renderer, raycaster;
         let ground, previewMesh;
-        const GRID_SIZE = 2; // Ukuran satu kotak grid dalam unit Three.js
-        const WORLD_SIZE = 20; // 20x20 grid
+        const GRID_SIZE = 2;
+        const WORLD_SIZE = 20;
 
         let resources = { gold: 1000, elixir: 1000 };
         let buildings = [];
         let selectedId = null;
         let placementMode = null;
 
-        // Mouse & Kamera State
         let mouse = new THREE.Vector2();
         let isMouseDown = false;
         let startRotation = { y: 0.7, x: -0.6 };
@@ -132,11 +129,11 @@
         let startMouse = { x: 0, y: 0 };
 
         const BUILDING_TYPES = {
-            townHall: { name: 'Balai Kota', color: 0x8b4513, size: 3, icon: '🏰', cost: 0, costType: 'gold', income: { gold: 5, elixir: 5 } },
-            goldMine: { name: 'Tambang Emas', color: 0xffd700, size: 2, icon: '⛏️', cost: 250, costType: 'gold', income: { gold: 15 } },
-            elixirCollector: { name: 'Pompa Elixir', color: 0x9932cc, size: 2, icon: '🏺', cost: 250, costType: 'elixir', income: { elixir: 15 } },
-            barracks: { name: 'Barak', color: 0xff4500, size: 2, icon: '⚔️', cost: 500, costType: 'gold', income: {} },
-            wall: { name: 'Tembok', color: 0xaaaaaa, size: 1, icon: '🧱', cost: 50, costType: 'gold', income: {} }
+            townHall: { name: 'Balai Kota', color: 0x8b4513, size: 3, cost: 0, costType: 'gold', income: { gold: 5, elixir: 5 } },
+            goldMine: { name: 'Tambang Emas', color: 0xffd700, size: 2, cost: 250, costType: 'gold', income: { gold: 15 } },
+            elixirCollector: { name: 'Pompa Elixir', color: 0x9932cc, size: 2, cost: 250, costType: 'elixir', income: { elixir: 15 } },
+            barracks: { name: 'Barak', color: 0xff4500, size: 2, cost: 500, costType: 'gold', income: {} },
+            wall: { name: 'Tembok', color: 0xaaaaaa, size: 1, cost: 50, costType: 'gold', income: {} }
         };
 
         window.onload = function() {
@@ -147,7 +144,7 @@
 
         function initScene() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x334d2a); // Hijau Rumput Tua
+            scene.background = new THREE.Color(0x3d5e32); 
 
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
             updateCameraPosition();
@@ -155,22 +152,25 @@
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             document.getElementById('game-container').appendChild(renderer.domElement);
 
             raycaster = new THREE.Raycaster();
 
-            // Pencahayaan
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-            dirLight.position.set(50, 100, 50);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(40, 100, 20);
             dirLight.castShadow = true;
-            dirLight.shadow.mapSize.width = 2048;
-            dirLight.shadow.mapSize.height = 2048;
+            dirLight.shadow.mapSize.width = 4096;
+            dirLight.shadow.mapSize.height = 4096;
+            dirLight.shadow.camera.left = -50;
+            dirLight.shadow.camera.right = 50;
+            dirLight.shadow.camera.top = 50;
+            dirLight.shadow.camera.bottom = -50;
             scene.add(dirLight);
 
-            // Lantai / Grid
             const groundGeo = new THREE.PlaneGeometry(WORLD_SIZE * GRID_SIZE, WORLD_SIZE * GRID_SIZE);
             const groundMat = new THREE.MeshPhongMaterial({ color: 0x567d46 });
             ground = new THREE.Mesh(groundGeo, groundMat);
@@ -180,18 +180,16 @@
 
             const gridHelper = new THREE.GridHelper(WORLD_SIZE * GRID_SIZE, WORLD_SIZE, 0xffffff, 0x000000);
             gridHelper.position.y = 0.05;
-            gridHelper.material.opacity = 0.1;
+            gridHelper.material.opacity = 0.08;
             gridHelper.material.transparent = true;
             scene.add(gridHelper);
 
-            // Preview Placement
             const previewGeo = new THREE.BoxGeometry(1, 1, 1);
-            const previewMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.4 });
+            const previewMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.3 });
             previewMesh = new THREE.Mesh(previewGeo, previewMat);
             previewMesh.visible = false;
             scene.add(previewMesh);
 
-            // Event Listeners
             window.addEventListener('resize', onWindowResize);
             document.addEventListener('mousedown', onMouseDown);
             document.addEventListener('mousemove', onMouseMove);
@@ -199,7 +197,6 @@
         }
 
         function initGame() {
-            // Bangunan awal: Town Hall
             createBuilding('townHall', 0, 0, 1);
             setInterval(passiveIncome, 1000);
         }
@@ -215,191 +212,146 @@
             updateUI();
         }
 
+        // Helper untuk membuat box dengan shadow
+        function createBox(w, h, d, color, px, py, pz) {
+            const mesh = new THREE.Mesh(
+                new THREE.BoxGeometry(w, h, d),
+                new THREE.MeshPhongMaterial({ color })
+            );
+            mesh.position.set(px, py, pz);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            return mesh;
+        }
+
         function createBuilding(typeKey, gridX, gridY, level = 1) {
             const type = BUILDING_TYPES[typeKey];
             const group = new THREE.Group();
             const pSize = type.size * GRID_SIZE;
 
-            // Logika Visual Berdasarkan Nama/Tipe
             switch(typeKey) {
                 case 'townHall':
-                    // Basis Stone
-                    const thBase = new THREE.Mesh(
-                        new THREE.BoxGeometry(pSize - 0.4, pSize * 0.4, pSize - 0.4),
-                        new THREE.MeshPhongMaterial({ color: 0x777777 })
-                    );
-                    thBase.position.y = pSize * 0.2;
-                    group.add(thBase);
-
-                    // Bagian Atas Stone
-                    const thTop = new THREE.Mesh(
-                        new THREE.BoxGeometry(pSize * 0.7, pSize * 0.3, pSize * 0.7),
-                        new THREE.MeshPhongMaterial({ color: 0x999999 })
-                    );
-                    thTop.position.y = pSize * 0.55;
-                    group.add(thTop);
-
-                    // Atap Kerucut
-                    const roof = new THREE.Mesh(
-                        new THREE.ConeGeometry(pSize * 0.5, pSize * 0.4, 4),
-                        new THREE.MeshPhongMaterial({ color: 0x8b0000 })
-                    );
+                    // Basis kayu/batu
+                    group.add(createBox(pSize * 0.9, pSize * 0.4, pSize * 0.9, 0x7a5c3e, 0, pSize * 0.2, 0));
+                    // Lantai dua
+                    group.add(createBox(pSize * 0.7, pSize * 0.3, pSize * 0.7, 0x8b6d4d, 0, pSize * 0.5, 0));
+                    // Pintu
+                    group.add(createBox(pSize * 0.15, pSize * 0.25, 0.1, 0x3d2b1f, 0, pSize * 0.125, pSize * 0.45));
+                    // Atap Slanted (Piramida)
+                    const roofGeo = new THREE.CylinderGeometry(0, pSize * 0.6, pSize * 0.4, 4);
+                    const roof = new THREE.Mesh(roofGeo, new THREE.MeshPhongMaterial({ color: 0x8b0000 }));
+                    roof.position.y = pSize * 0.85;
                     roof.rotation.y = Math.PI / 4;
-                    roof.position.y = pSize * 0.9;
+                    roof.castShadow = true;
                     group.add(roof);
+                    // Bendera kecil
+                    const pole = createBox(0.05, 0.8, 0.05, 0xdddddd, 0, pSize * 1.2, 0);
+                    group.add(pole);
+                    const flag = createBox(0.4, 0.2, 0.02, 0xffff00, 0.2, pSize * 1.5, 0);
+                    group.add(flag);
                     break;
 
                 case 'goldMine':
-                    // Rangka Kayu
-                    const frame = new THREE.Mesh(
-                        new THREE.BoxGeometry(pSize - 0.4, 0.5, pSize - 0.4),
-                        new THREE.MeshPhongMaterial({ color: 0x5d4037 })
+                    // Struktur Kayu
+                    group.add(createBox(pSize * 0.8, 0.2, pSize * 0.8, 0x4d332d, 0, 0.1, 0));
+                    group.add(createBox(0.2, pSize * 0.6, 0.2, 0x5d4037, -pSize * 0.3, pSize * 0.3, -pSize * 0.3));
+                    group.add(createBox(0.2, pSize * 0.6, 0.2, 0x5d4037, pSize * 0.3, pSize * 0.3, -pSize * 0.3));
+                    // Katrol
+                    const wheel = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.3, 0.3, 0.15, 12),
+                        new THREE.MeshPhongMaterial({ color: 0x333333 })
                     );
-                    frame.position.y = 0.25;
-                    group.add(frame);
-
-                    // Lubang Tambang
-                    const pit = new THREE.Mesh(
-                        new THREE.BoxGeometry(pSize * 0.6, 0.1, pSize * 0.6),
-                        new THREE.MeshPhongMaterial({ color: 0x111111 })
+                    wheel.rotation.z = Math.PI / 2;
+                    wheel.position.set(0, pSize * 0.5, -pSize * 0.3);
+                    group.add(wheel);
+                    // Keranjang Emas
+                    const cart = createBox(0.6, 0.4, 0.6, 0x222222, 0, 0.3, 0.2);
+                    group.add(cart);
+                    const goldInCart = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.25, 6, 6),
+                        new THREE.MeshPhongMaterial({ color: 0xffd700, emissive: 0x554400 })
                     );
-                    pit.position.y = 0.55;
-                    group.add(pit);
-
-                    // Tiang Derek
-                    const pole = new THREE.Mesh(
-                        new THREE.BoxGeometry(0.3, pSize * 0.8, 0.3),
-                        new THREE.MeshPhongMaterial({ color: 0x5d4037 })
-                    );
-                    pole.position.set(-pSize * 0.2, pSize * 0.4, 0);
-                    group.add(pole);
-
-                    // Tumpukan Emas
-                    const nugget = new THREE.Mesh(
-                        new THREE.IcosahedronGeometry(0.4, 0),
-                        new THREE.MeshPhongMaterial({ color: 0xffd700, emissive: 0xaa8800 })
-                    );
-                    nugget.position.set(pSize * 0.1, 0.8, pSize * 0.1);
-                    group.add(nugget);
+                    goldInCart.position.set(0, 0.5, 0.2);
+                    group.add(goldInCart);
+                    group.userData.anim = (t) => { wheel.rotation.y += 0.05; goldInCart.rotation.y += 0.02; };
                     break;
 
                 case 'elixirCollector':
-                    // Basis Logam
-                    const eBase = new THREE.Mesh(
-                        new THREE.CylinderGeometry(pSize * 0.4, pSize * 0.45, 0.6, 16),
-                        new THREE.MeshPhongMaterial({ color: 0x555555 })
-                    );
-                    eBase.position.y = 0.3;
-                    group.add(eBase);
-
-                    // Tangki Kaca (Elixir)
-                    const tank = new THREE.Mesh(
+                    // Alas Logam
+                    const base = new THREE.Mesh(new THREE.CylinderGeometry(pSize * 0.4, pSize * 0.45, 0.4, 16), new THREE.MeshPhongMaterial({ color: 0x666666 }));
+                    base.position.y = 0.2;
+                    group.add(base);
+                    // Tabung Kaca
+                    const glass = new THREE.Mesh(
                         new THREE.CylinderGeometry(pSize * 0.35, pSize * 0.35, pSize * 0.7, 16),
-                        new THREE.MeshPhongMaterial({ 
-                            color: 0x9932cc, 
-                            transparent: true, 
-                            opacity: 0.7,
-                            emissive: 0x440044
-                        })
+                        new THREE.MeshPhongMaterial({ color: 0x9932cc, transparent: true, opacity: 0.6, emissive: 0x330033 })
                     );
-                    tank.position.y = pSize * 0.4 + 0.3;
-                    group.add(tank);
-
-                    // Tutup Atas
-                    const cap = new THREE.Mesh(
-                        new THREE.CylinderGeometry(pSize * 0.36, pSize * 0.36, 0.2, 16),
-                        new THREE.MeshPhongMaterial({ color: 0x444444 })
-                    );
-                    cap.position.y = pSize * 0.75 + 0.3;
-                    group.add(cap);
+                    glass.position.y = pSize * 0.35 + 0.4;
+                    group.add(glass);
+                    // Pipa-pipa
+                    const pipe = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.1, 8, 16, Math.PI), new THREE.MeshPhongMaterial({ color: 0xaa8800 }));
+                    pipe.position.set(pSize * 0.3, 0.5, 0);
+                    pipe.rotation.z = -Math.PI / 2;
+                    group.add(pipe);
+                    // Animasi denyut elixir
+                    group.userData.anim = (t) => { glass.scale.set(1 + Math.sin(t*3)*0.02, 1, 1 + Math.sin(t*3)*0.02); };
                     break;
 
                 case 'barracks':
-                    // Gedung Utama (Merah)
-                    const bBody = new THREE.Mesh(
-                        new THREE.BoxGeometry(pSize - 0.4, pSize * 0.5, pSize - 0.4),
-                        new THREE.MeshPhongMaterial({ color: 0xaa2222 })
-                    );
-                    bBody.position.y = pSize * 0.25;
-                    group.add(bBody);
-
-                    // Atap Tenda
-                    const bRoof = new THREE.Mesh(
-                        new THREE.BoxGeometry(pSize - 0.2, 0.3, pSize - 0.2),
-                        new THREE.MeshPhongMaterial({ color: 0x444444 })
-                    );
-                    bRoof.position.y = pSize * 0.5 + 0.15;
-                    group.add(bRoof);
-
-                    // Pedang / Target di depan
-                    const sign = new THREE.Mesh(
-                        new THREE.BoxGeometry(0.1, 0.8, 0.1),
-                        new THREE.MeshPhongMaterial({ color: 0xcccccc })
-                    );
-                    sign.position.set(pSize * 0.3, 0.4, pSize * 0.3);
-                    group.add(sign);
+                    // Tenda Barak
+                    const tentGeo = new THREE.CylinderGeometry(0.1, pSize * 0.5, pSize * 0.7, 4);
+                    const tent = new THREE.Mesh(tentGeo, new THREE.MeshPhongMaterial({ color: 0xaa2222 }));
+                    tent.position.y = pSize * 0.35;
+                    tent.rotation.y = Math.PI / 4;
+                    group.add(tent);
+                    // Pintu Tenda
+                    const tDoor = createBox(0.4, 0.6, 0.1, 0x221111, 0, 0.3, pSize * 0.35);
+                    group.add(tDoor);
+                    // Pedang nancap di batu
+                    const stone = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), new THREE.MeshPhongMaterial({ color: 0x777777 }));
+                    stone.position.set(pSize * 0.35, 0.2, pSize * 0.35);
+                    group.add(stone);
+                    const sword = createBox(0.05, 0.7, 0.05, 0xcccccc, pSize * 0.35, 0.6, pSize * 0.35);
+                    sword.rotation.z = 0.2;
+                    group.add(sword);
                     break;
 
                 case 'wall':
-                    // Tembok Batu
-                    const wall = new THREE.Mesh(
-                        new THREE.BoxGeometry(pSize - 0.2, pSize * 0.8, pSize - 0.2),
-                        new THREE.MeshPhongMaterial({ color: 0x888888 })
-                    );
-                    wall.position.y = pSize * 0.4;
-                    group.add(wall);
-
-                    // Gerigi (Battlements)
-                    const tooth = new THREE.Mesh(
-                        new THREE.BoxGeometry(pSize * 0.4, 0.3, pSize * 0.4),
-                        new THREE.MeshPhongMaterial({ color: 0x666666 })
-                    );
-                    tooth.position.y = pSize * 0.8 + 0.15;
-                    group.add(tooth);
+                    // Pilar Utama
+                    group.add(createBox(pSize - 0.2, pSize * 0.8, pSize - 0.2, 0x888888, 0, pSize * 0.4, 0));
+                    // Detail gerigi atas
+                    for(let i=0; i<4; i++) {
+                        const tooth = createBox(0.4, 0.3, 0.4, 0x666666, 
+                            (i<2 ? -0.4 : 0.4), pSize * 0.8 + 0.15, (i%2==0 ? -0.4 : 0.4));
+                        group.add(tooth);
+                    }
                     break;
             }
 
-            // Bayangan untuk semua bagian grup
-            group.traverse(child => {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
-
-            // Posisi di Grid
             const worldX = (gridX * GRID_SIZE) - (WORLD_SIZE * GRID_SIZE / 2) + (pSize / 2);
             const worldZ = (gridY * GRID_SIZE) - (WORLD_SIZE * GRID_SIZE / 2) + (pSize / 2);
             group.position.set(worldX, 0, worldZ);
-
             scene.add(group);
 
-            const bData = {
-                id: Date.now() + Math.random(),
-                type: typeKey,
-                gridX, gridY,
-                level,
-                mesh: group
-            };
+            const bData = { id: Date.now() + Math.random(), type: typeKey, gridX, gridY, level, mesh: group };
             buildings.push(bData);
             return bData;
         }
 
-        function animate() {
+        function animate(time) {
             requestAnimationFrame(animate);
+            const t = time * 0.001;
             
-            if (placementMode) {
-                updatePlacementPreview();
-            }
+            buildings.forEach(b => {
+                if(b.mesh.userData.anim) b.mesh.userData.anim(t);
+            });
 
+            if (placementMode) updatePlacementPreview();
             renderer.render(scene, camera);
         }
 
-        // --- Kontrol & Interaksi ---
-
         function onMouseDown(e) {
             if (e.target.closest('button') || e.target.closest('.building-card')) return;
-            
             isMouseDown = true;
             startMouse.x = e.clientX;
             startMouse.y = e.clientY;
@@ -410,7 +362,6 @@
         function onMouseMove(e) {
             mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-
             if (isMouseDown) {
                 const deltaX = e.clientX - startMouse.x;
                 const deltaY = e.clientY - startMouse.y;
@@ -421,9 +372,7 @@
         }
 
         function onMouseUp(e) {
-            if (isMouseDown && Math.abs(e.clientX - startMouse.x) < 5) {
-                handleInteraction();
-            }
+            if (isMouseDown && Math.abs(e.clientX - startMouse.x) < 5) handleInteraction();
             isMouseDown = false;
         }
 
@@ -438,33 +387,23 @@
         function updatePlacementPreview() {
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObject(ground);
-
             if (intersects.length > 0) {
                 const pt = intersects[0].point;
                 const type = BUILDING_TYPES[placementMode];
-                
-                // Konversi koordinat dunia ke koordinat grid
                 let gx = Math.floor((pt.x + (WORLD_SIZE * GRID_SIZE / 2)) / GRID_SIZE);
                 let gy = Math.floor((pt.z + (WORLD_SIZE * GRID_SIZE / 2)) / GRID_SIZE);
-
-                // Snap ke grid
                 const worldX = (gx * GRID_SIZE) - (WORLD_SIZE * GRID_SIZE / 2) + (type.size * GRID_SIZE / 2);
                 const worldZ = (gy * GRID_SIZE) - (WORLD_SIZE * GRID_SIZE / 2) + (type.size * GRID_SIZE / 2);
-
                 previewMesh.scale.set(type.size * GRID_SIZE, 0.5, type.size * GRID_SIZE);
                 previewMesh.position.set(worldX, 0.25, worldZ);
                 previewMesh.visible = true;
-
                 const valid = canPlace(gx, gy, type.size);
                 previewMesh.material.color.setHex(valid ? 0x00ff00 : 0xff0000);
-            } else {
-                previewMesh.visible = false;
-            }
+            } else { previewMesh.visible = false; }
         }
 
         function handleInteraction() {
             raycaster.setFromCamera(mouse, camera);
-            
             if (placementMode) {
                 const intersects = raycaster.intersectObject(ground);
                 if (intersects.length > 0) {
@@ -477,25 +416,18 @@
                 const intersects = raycaster.intersectObjects(buildings.map(b => b.mesh), true);
                 if (intersects.length > 0) {
                     let clickedGroup = intersects[0].object;
-                    while (clickedGroup.parent && clickedGroup.parent.type !== "Scene") {
-                        clickedGroup = clickedGroup.parent;
-                    }
+                    while (clickedGroup.parent && clickedGroup.parent.type !== "Scene") clickedGroup = clickedGroup.parent;
                     const b = buildings.find(b => b.mesh === clickedGroup);
                     if (b) selectBuildingInstance(b);
-                } else {
-                    deselect();
-                }
+                } else { deselect(); }
             }
         }
-
-        // --- Logika Game ---
 
         function canPlace(gx, gy, size) {
             if (gx < 0 || gy < 0 || gx + size > WORLD_SIZE || gy + size > WORLD_SIZE) return false;
             return !buildings.some(b => {
                 const bSize = BUILDING_TYPES[b.type].size;
-                return gx < b.gridX + bSize && gx + size > b.gridX &&
-                       gy < b.gridY + bSize && gy + size > b.gridY;
+                return gx < b.gridX + bSize && gx + size > b.gridX && gy < b.gridY + bSize && gy + size > b.gridY;
             });
         }
 
@@ -518,19 +450,14 @@
                 previewMesh.visible = false;
                 updateUI();
                 showNotif(`${type.name} Berhasil Dibangun`, "green");
-            } else {
-                showNotif("Area Terhalang!", "red");
-            }
+            } else { showNotif("Area Terhalang!", "red"); }
         }
 
         function selectBuildingInstance(b) {
             selectedId = b.id;
-            // Highlight dengan emissive pada anak mesh pertama (biasanya bodi utama)
             buildings.forEach(item => {
-                item.mesh.children.forEach(child => {
-                    if(child.material && child.material.emissive) {
-                        child.material.emissive.setHex(item.id === selectedId ? 0x222222 : 0x000000);
-                    }
+                item.mesh.traverse(child => {
+                    if(child.material && child.material.emissive) child.material.emissive.setHex(item.id === selectedId ? 0x222222 : 0x000000);
                 });
             });
             document.getElementById('selection-overlay').classList.remove('hidden');
@@ -539,10 +466,8 @@
         function deselect() {
             selectedId = null;
             buildings.forEach(item => {
-                item.mesh.children.forEach(child => {
-                    if(child.material && child.material.emissive) {
-                        child.material.emissive.setHex(0x000000);
-                    }
+                item.mesh.traverse(child => {
+                    if(child.material && child.material.emissive) child.material.emissive.setHex(0x000000);
                 });
             });
             document.getElementById('selection-overlay').classList.add('hidden');
@@ -551,43 +476,31 @@
         function upgradeSelected() {
             const b = buildings.find(t => t.id === selectedId);
             if (!b) return;
-
             const cost = b.level * 500;
             if (resources.gold >= cost) {
                 resources.gold -= cost;
                 b.level++;
-                
-                // Update Visual (Sisik / Tinggi)
-                b.mesh.scale.y += 0.1;
-                b.mesh.position.y += 0.1;
-                
-                if (b.type === 'townHall') {
-                    document.getElementById('th-level').innerText = `LVL ${b.level}`;
-                }
+                b.mesh.scale.y += 0.05;
+                b.mesh.position.y += 0.05;
+                if (b.type === 'townHall') document.getElementById('th-level').innerText = `LVL ${b.level}`;
                 showNotif("Upgrade Berhasil!", "blue");
                 updateUI();
-            } else {
-                showNotif(`Butuh 💰 ${cost} Emas`, "red");
-            }
+            } else { showNotif(`Butuh 💰 ${cost} Emas`, "red"); }
         }
 
         function destroySelected() {
             const index = buildings.findIndex(b => b.id === selectedId);
             if (index === -1) return;
-            
             const b = buildings[index];
             if (b.type === 'townHall') {
-                showNotif("Tidak bisa menghapus Pusat Pemerintahan!", "orange");
+                showNotif("Pusat Pemerintahan tidak bisa dihapus!", "orange");
                 return;
             }
-
             scene.remove(b.mesh);
             buildings.splice(index, 1);
             deselect();
             showNotif("Bangunan Dihancurkan", "gray");
         }
-
-        // --- Utilitas UI ---
 
         function updateUI() {
             document.getElementById('gold-display').innerText = Math.floor(resources.gold);
@@ -596,16 +509,11 @@
 
         function showNotif(msg, color) {
             const div = document.createElement('div');
-            const colors = {
-                red: 'bg-red-600', green: 'bg-green-600', 
-                blue: 'bg-blue-600', orange: 'bg-orange-600', gray: 'bg-gray-700'
-            };
+            const colors = { red: 'bg-red-600', green: 'bg-green-600', blue: 'bg-blue-600', orange: 'bg-orange-600', gray: 'bg-gray-700' };
             div.className = `notif ${colors[color] || 'bg-black'} text-white font-bold px-8 py-3 rounded-2xl shadow-2xl`;
             div.innerText = msg;
-            
             const container = document.getElementById('notif-container');
             container.appendChild(div);
-
             setTimeout(() => {
                 div.style.opacity = '0';
                 div.style.transform = 'translateY(-20px)';
@@ -618,7 +526,6 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
-
     </script>
 </body>
 </html>
